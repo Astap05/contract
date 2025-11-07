@@ -84,9 +84,12 @@ export function useContract({ client, contractAddress }: { client: SigningCosmWa
     return res
   })
 
+  const clearLogs = () => setLogs([])
+
   return {
     logs,
     appendLog,
+    clearLogs,
     getConfig,
     getParticipantStatus,
     getTaskInfo,

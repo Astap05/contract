@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useWallet } from '../wallet/useWallet'
 import { useContract } from '../wallet/useContract'
-import { runPrototypeDemo } from '../demo/prototype'
+import { StatsPanel } from './StatsPanel'
+import { InputForm } from './InputForm'
+import { ProcessFlow } from './ProcessFlow'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -25,6 +27,51 @@ export default function App() {
   const connected = !!address
   const [demoParticipants, setDemoParticipants] = useState(10)
   const [demoTotal, setDemoTotal] = useState(10)
+  const [demoRunning, setDemoRunning] = useState(false)
+  const [stats, setStats] = useState<any>(null)
+
+  // Парсим статистику из логов в реальном времени
+  useEffect(() => {
+    if (contractApi.logs.length === 0) {
+      setStats(null)
+      return
+    }
+
+    let registered = 0
+    let taskSubmitted = 0
+    let validated = 0
+    let tokensClaimed = 0
+    let distributed = 0
+
+    contractApi.logs.forEach((log) => {
+      if (log.includes('Зарегистрирован')) registered++
+      if (log.includes('Отправил задание')) taskSubmitted++
+      if (log.includes('валидировано')) validated++
+      if (log.includes('Выплата:')) {
+        tokensClaimed++
+        distributed++
+      }
+      if (log.includes('ИТОГО:')) {
+        const match = log.match(/распределено (\d+) из (\d+)/)
+        if (match) {
+          distributed = parseInt(match[1])
+        }
+      }
+    })
+
+    if (registered > 0 || distributed > 0) {
+      setStats({
+        total_tokens: demoTotal,
+        tokens_distributed: distributed,
+        tokens_remaining: demoTotal - distributed,
+        total_participants: demoParticipants,
+        registered: Math.max(registered, demoParticipants),
+        task_submitted: Math.max(taskSubmitted, demoParticipants),
+        validated: Math.max(validated, demoParticipants),
+        tokens_claimed: distributed,
+      })
+    }
+  }, [contractApi.logs, demoTotal, demoParticipants])
 
   return (
     <div className="container">
@@ -81,31 +128,65 @@ export default function App() {
         </div>
       </Section>
 
-      <Section title="Демо как прототип (офлайн, без Keplr)">
-        <div className="grid4">
-          <label>Участников
-            <input type="number" value={demoParticipants} onChange={e => setDemoParticipants(Number(e.target.value))} />
-          </label>
-          <label>Всего токенов
-            <input type="number" value={demoTotal} onChange={e => setDemoTotal(Number(e.target.value))} />
-          </label>
-          <div />
-          <button className="btn-outline" onClick={() => {
+      <Section title="📊 Демо: Распределение токенов">
+        <InputForm
+          participants={demoParticipants}
+          totalTokens={demoTotal}
+          denom={denom}
+          onParticipantsChange={setDemoParticipants}
+          onTotalTokensChange={setDemoTotal}
+          onDenomChange={setDenom}
+          onRunDemo={() => {
+            setDemoRunning(true)
+            setStats(null)
+            contractApi.clearLogs()
             const url = `http://localhost:8787/demo-fast?participants=${demoParticipants}&total=${demoTotal}&denom=${encodeURIComponent(denom)}`
             const es = new EventSource(url)
             es.onmessage = (e) => {
-              try { const { line } = JSON.parse(e.data); contractApi.appendLog(line) } catch {}
+              try {
+                const { line } = JSON.parse(e.data)
+                contractApi.appendLog(line)
+              } catch {}
             }
-            es.onerror = () => es.close()
-          }}>
-            Запустить демо
-          </button>
-        </div>
-        <p className="hint">Демо выполняется на локальном сервере, логи также видны в терминале (npm run dev).</p>
+            es.onerror = () => {
+              es.close()
+              setDemoRunning(false)
+            }
+            es.onclose = () => setDemoRunning(false)
+          }}
+          running={demoRunning}
+        />
+        <p className="hint" style={{ marginTop: 12 }}>
+          💡 Демо выполняется на локальном сервере, логи также видны в терминале (npm run dev).
+        </p>
       </Section>
 
-      <Section title="Логи">
-        <pre className="logs">{contractApi.logs.join('\n')}</pre>
+      {stats && (
+        <>
+          <Section title="📈 Статистика распределения">
+            <StatsPanel stats={stats} />
+          </Section>
+
+          <Section title="🔄 Процесс распределения">
+            <ProcessFlow
+              registered={stats.registered || 0}
+              taskSubmitted={stats.task_submitted || 0}
+              validated={stats.validated || 0}
+              tokensClaimed={stats.tokens_claimed || 0}
+              total={stats.total_participants || 0}
+            />
+          </Section>
+        </>
+      )}
+
+      <Section title="📝 Логи">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span className="hint">Всего записей: {contractApi.logs.length}</span>
+          <button className="btn-outline" onClick={contractApi.clearLogs} style={{ padding: '6px 12px', fontSize: 12 }}>
+            Очистить логи
+          </button>
+        </div>
+        <pre className="logs">{contractApi.logs.join('\n') || 'Логи появятся здесь после запуска демо...'}</pre>
       </Section>
     </div>
   )
