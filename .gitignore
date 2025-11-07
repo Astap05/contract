@@ -1,0 +1,44 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# Node / frontend
+frontend/node_modules/
+frontend/.vite/
+frontend/dist/
+frontend/.cache/
+frontend/.eslintcache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Rust / Cargo
+**/target/
+**/Cargo.lock
+
+# Wasm optimizer artifacts
+cosmwasm-contract/artifacts/
+
+# Local env / config
+.env
+.env.*
+frontend/.env
+frontend/.env.*
+
+# Generated dictionaries
+/dictionary.txt
+/dictionary_with_examples.txt
+
+# Misc
+*.bak
+*.orig
+*.rej
+
+
