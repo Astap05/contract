@@ -176,6 +176,7 @@ cargo schema
 - `TESTNET_GUIDE.md` - **Пошаговая инструкция по тестированию в testnet**
 - `QUICK_START.md` - Быстрый старт для опытных пользователей
 - `README.md` - Основная документация проекта
+- `../pocket-flow/README.md` - Интеграция Pocket Flow для автоматизации сценариев
 
 ## Тестирование в Testnet
 
