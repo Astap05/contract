@@ -1,9 +1,10 @@
 import React from 'react'
 
-interface StatsData {
+export interface StatsData {
   total_tokens?: number
   tokens_distributed?: number
-  tokens_remaining?: number
+  tokens_reserved?: number
+  tokens_available?: number
   total_participants?: number
   registered?: number
   task_submitted?: number
@@ -21,7 +22,8 @@ export function StatsPanel({ stats }: StatsPanelProps) {
   const {
     total_tokens = 0,
     tokens_distributed = 0,
-    tokens_remaining = 0,
+    tokens_reserved = 0,
+    tokens_available = total_tokens,
     total_participants = 0,
     registered = 0,
     task_submitted = 0,
@@ -31,6 +33,8 @@ export function StatsPanel({ stats }: StatsPanelProps) {
 
   const distributionPercent = total_tokens > 0 ? (tokens_distributed / total_tokens) * 100 : 0
   const participantsPercent = total_participants > 0 ? (tokens_claimed / total_participants) * 100 : 0
+  const reservedPercent = total_tokens > 0 ? (tokens_reserved / total_tokens) * 100 : 0
+  const availablePercent = total_tokens > 0 ? (tokens_available / total_tokens) * 100 : 0
 
   return (
     <div className="stats-panel">
@@ -59,12 +63,26 @@ export function StatsPanel({ stats }: StatsPanelProps) {
 
       <div className="stat-card">
         <div className="stat-label">Осталось</div>
-        <div className="stat-value">{tokens_remaining.toLocaleString()}</div>
+        <div className="stat-value">{tokens_available.toLocaleString()}</div>
         <div className="stat-progress">
           <div
             className="stat-bar"
             style={{
-              width: `${100 - distributionPercent}%`,
+              width: `${availablePercent}%`,
+              background: 'var(--muted)',
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="stat-card">
+        <div className="stat-label">Зарезервировано</div>
+        <div className="stat-value">{tokens_reserved.toLocaleString()}</div>
+        <div className="stat-progress">
+          <div
+            className="stat-bar"
+            style={{
+              width: `${reservedPercent}%`,
               background: 'var(--muted)',
             }}
           />

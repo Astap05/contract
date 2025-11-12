@@ -9,8 +9,11 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Only issuer can perform this action")]
-    OnlyIssuer {},
+    #[error("Only admin can perform this action")]
+    OnlyAdmin {},
+
+    #[error("Only treasury can deposit tokens")]
+    OnlyTreasury {},
 
     #[error("Participant already registered")]
     AlreadyRegistered {},
@@ -33,8 +36,17 @@ pub enum ContractError {
     #[error("Token already claimed")]
     TokenAlreadyClaimed {},
 
-    #[error("No tokens remaining")]
-    NoTokensRemaining {},
+    #[error("Nothing to claim")]
+    NothingToClaim {},
+
+    #[error("Not enough available tokens")]
+    InsufficientFunds {},
+
+    #[error("Participant limit reached")]
+    ParticipantLimitReached {},
+
+    #[error("Invalid amount")]
+    InvalidAmount {},
 
     #[error("All tokens distributed")]
     AllTokensDistributed {},

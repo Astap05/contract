@@ -67,6 +67,14 @@ export function useContract({ client, contractAddress }: { client: SigningCosmWa
     return res
   })
 
+  const approveDistribution = (participant: string, amount: string) => run(async () => {
+    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    const msg = { approve_distribution: { participant, amount } }
+    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto')
+    push(`approve_distribution(${participant}, ${amount}) → tx ${res.transactionHash}`)
+    return res
+  })
+
   const claimReward = () => run(async () => {
     if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
     const msg = { claim_reward: {} }
@@ -97,6 +105,7 @@ export function useContract({ client, contractAddress }: { client: SigningCosmWa
     register,
     submitTask,
     validateTask,
+    approveDistribution,
     claimReward,
     deposit,
   }

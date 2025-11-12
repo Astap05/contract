@@ -1,58 +1,53 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-/// Конфигурация контракта - хранит информацию об эмиссионном кошельке
+/// Конфигурация контракта
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
-    /// Адрес держателя эмиссионного кошелька (кто может валидировать задания)
-    pub issuer: Addr,
-    /// Общее количество токенов для распределения
-    pub total_tokens: u128,
-    /// Деноминация токена (например, "uatom", "uosmo")
+    /// Адрес администратора (инициатор контракта)
+    pub admin: Addr,
+    /// Казначейский адрес, с которого можно пополнять эмиссию
+    pub treasury: Addr,
+    /// Деном токена (uatom/uosmo/…)
     pub denom: String,
+    /// Текущее количество зарегистрированных участников
+    pub participant_count: u32,
+    /// Максимальное число участников
+    pub max_participants: u32,
 }
 
-/// Состояние участника в системе
+/// Состояние участника
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum ParticipantStatus {
-    /// Зарегистрирован, но задание не подано
     Registered,
-    /// Задание подано и ожидает валидации
     TaskSubmitted,
-    /// Задание валидировано держателем эмиссии, токен может быть получен
     Validated,
-    /// Токен уже получен
     TokenClaimed,
 }
 
-/// Информация о задании участника
+/// Информация о задании и выплатах участника
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TaskInfo {
-    /// Адрес участника
     pub participant: Addr,
-    /// Описание задания (может быть пустым, если задание описано вне блокчейна)
     pub description: Option<String>,
-    /// Время подачи задания
     pub submitted_at: u64,
-    /// Валидировано ли задание
     pub validated: bool,
-    /// Время валидации (если валидировано)
     pub validated_at: Option<u64>,
-    /// Получен ли токен
+    /// Сумма, одобренная администратором, но не выплаченная
+    pub approved_amount: Uint128,
+    /// Получен ли токен (хотя бы одна выплата)
     pub token_claimed: bool,
 }
 
-// Хранилище конфигурации контракта
 pub const CONFIG: Item<Config> = Item::new("config");
 
-// Мапа участников: адрес -> статус
 pub const PARTICIPANTS: Map<&Addr, ParticipantStatus> = Map::new("participants");
 
-// Мапа заданий: адрес -> информация о задании
 pub const TASKS: Map<&Addr, TaskInfo> = Map::new("tasks");
 
-// Счетчик выданных токенов
-pub const TOKENS_DISTRIBUTED: Item<u128> = Item::new("tokens_distributed");
+pub const TOKENS_DISTRIBUTED: Item<Uint128> = Item::new("tokens_distributed");
+
+pub const TOKENS_RESERVED: Item<Uint128> = Item::new("tokens_reserved");

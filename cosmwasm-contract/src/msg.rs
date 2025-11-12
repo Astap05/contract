@@ -1,15 +1,15 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 
 /// Сообщение инициализации контракта
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Адрес держателя эмиссионного кошелька (кто будет валидировать задания)
-    pub issuer: String,
-    /// Общее количество токенов для распределения
-    pub total_tokens: u128,
-    /// Деноминация токена (например, "uatom", "uosmo")
+    /// Адрес казначейства, откуда можно пополнять эмиссию
+    pub treasury: String,
+    /// Деноминация токена (например, "utoken")
     pub denom: String,
+    /// Максимальное число участников (1-100, по умолчанию 100)
+    pub max_participants: Option<u32>,
 }
 
 /// Сообщения выполнения (execute)
@@ -33,8 +33,14 @@ pub enum ExecuteMsg {
         participant: String,
     },
 
-    /// Получение токена участником после валидации
-    /// Участник получает 1 токен после того, как его задание было валидировано
+    /// Одобрение индивидуальной выплаты участнику
+    /// Может вызвать только администратор (инициатор контракта)
+    ApproveDistribution {
+        participant: String,
+        amount: Uint128,
+    },
+
+    /// Получение токена участником после валидации и одобрения
     ClaimReward {},
 
     /// Пополнение баланса контракта токенами (только issuer)
@@ -83,11 +89,13 @@ pub enum QueryMsg {
 /// Ответ с конфигурацией контракта
 #[cw_serde]
 pub struct ConfigResponse {
-    pub issuer: Addr,
-    pub total_tokens: u128,
+    pub admin: Addr,
+    pub treasury: Addr,
     pub denom: String,
-    pub tokens_distributed: u128,
-    pub tokens_remaining: u128,
+    pub max_participants: u32,
+    pub participant_count: u32,
+    pub tokens_distributed: Uint128,
+    pub tokens_reserved: Uint128,
 }
 
 /// Ответ со статусом участника
@@ -98,6 +106,7 @@ pub struct ParticipantStatusResponse {
     pub has_task: bool,
     pub task_validated: bool,
     pub token_claimed: bool,
+    pub approved_amount: Uint128,
 }
 
 /// Ответ с информацией о задании
@@ -108,6 +117,7 @@ pub struct TaskInfoResponse {
     pub submitted_at: u64,
     pub validated: bool,
     pub validated_at: Option<u64>,
+    pub approved_amount: Uint128,
     pub token_claimed: bool,
 }
 
@@ -125,14 +135,16 @@ pub struct ParticipantInfo {
     pub has_task: bool,
     pub task_validated: bool,
     pub token_claimed: bool,
+    pub approved_amount: Uint128,
 }
 
 /// Ответ со статистикой
 #[cw_serde]
 pub struct StatsResponse {
-    pub total_tokens: u128,
-    pub tokens_distributed: u128,
-    pub tokens_remaining: u128,
+    pub total_tokens: Uint128,
+    pub tokens_distributed: Uint128,
+    pub tokens_reserved: Uint128,
+    pub tokens_available: Uint128,
     pub total_participants: u32,
     pub registered: u32,
     pub task_submitted: u32,

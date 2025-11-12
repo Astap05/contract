@@ -1,15 +1,6 @@
 #!/usr/bin/env node
 /**
  * Демонстрация интеграции Pocket Flow.
- *
- * Мы запускаем типовой сценарий распределения токенов:
- * 1. Подготовить параметры.
- * 2. Проверить, что фронтенд и demo-сервер включены.
- * 3. Стартовать demo-flow (через наш SSE сервер http://localhost:8787).
- * 4. Собрать логи и превратить их в аккуратный отчёт.
- *
- * Pocket Flow позволяет описывать такой конвейер декларативно,
- * подключать LLM или другие инструменты для нестандартных шагов.
  */
 
 import { createGraph, createNode, SharedStore } from './core.mjs'
@@ -29,11 +20,14 @@ async function checkServer() {
   })
 }
 
-async function runDemoSSE({ participants, total, denom }) {
-  const url = new URL('/demo-fast', DEMO_SERVER)
+async function runDemoSSE({ participants, total, denom, amounts }) {
+  const url = new URL('/manual-demo', DEMO_SERVER)
   url.searchParams.set('participants', participants)
   url.searchParams.set('total', total)
   url.searchParams.set('denom', denom)
+  if (amounts.length > 0) {
+    url.searchParams.set('amounts', amounts.join(','))
+  }
 
   const events = []
 
@@ -70,12 +64,18 @@ const flow = createGraph((graph) => {
       createNode('collect-input', 'Сбор параметров демо у пользователя', async (ctx) => {
         const rl = readline.createInterface({ input, output })
         const participants = Number(await rl.question('Сколько участников смоделировать? (по умолчанию 25) ')) || 25
-        const totalTokens = Number(await rl.question('Сколько всего токенов? (по умолчанию 25) ')) || 25
+        const totalTokens = Number(await rl.question('Сколько всего токенов? (по умолчанию 100) ')) || 100
         const denom = (await rl.question('Деноминация (по умолчанию utoken) ')) || 'utoken'
+        const amountsLine = await rl.question('Выплаты (например "10,5,20,0"); пусто → равные? ')
         rl.write('\n')
         rl.close()
 
-        ctx.merge({ participants, totalTokens, denom })
+        const amounts = amountsLine
+          .split(',')
+          .map((v) => Number(v.trim()))
+          .filter((v) => !Number.isNaN(v) && v >= 0)
+
+        ctx.merge({ participants, totalTokens, denom, amounts })
         console.log(`→ Параметры: ${participants} участников, ${totalTokens} ${denom}`)
       })
     )
@@ -95,9 +95,10 @@ const flow = createGraph((graph) => {
         const participants = ctx.read('participants')
         const totalTokens = ctx.read('totalTokens')
         const denom = ctx.read('denom')
+        const amounts = ctx.read('amounts') ?? []
 
         console.log('→ Отправляем поток событий…')
-        const logs = await runDemoSSE({ participants, total: totalTokens, denom })
+        const logs = await runDemoSSE({ participants, total: totalTokens, denom, amounts })
         ctx.merge({ logs })
         console.log(`← Получено ${logs.length} событий.`)
       })
@@ -109,7 +110,10 @@ const flow = createGraph((graph) => {
         let validated = 0
         for (const line of logs) {
           if (line.includes('валидировано')) validated += 1
-          if (line.includes('Выплата:')) distributed += 1
+          if (line.includes('Выплата:')) {
+            const match = line.match(/Выплата: (\d+)/)
+            if (match) distributed += Number(match[1])
+          }
         }
         const totalTokens = ctx.read('totalTokens')
         ctx.merge({
@@ -129,7 +133,7 @@ const flow = createGraph((graph) => {
 })
 
 async function main() {
-  console.log('=== Pocket Flow Demo ===')
+  console.log('=== Pocket Flow Manual Distribution Demo ===')
   const initialStore = new SharedStore()
   const snapshots = await flow.execute({ entryPoints: ['collect-input'], store: initialStore })
 
@@ -142,7 +146,7 @@ async function main() {
   for (const line of summary.logsSample ?? []) {
     console.log(` • ${line}`)
   }
-  console.log('\nPocket Flow завершил сценарий. Используйте этот шаблон, чтобы подключать LLM-агентов или дополнительные проверки.')
+  console.log('\nPocket Flow завершил сценарий ручного распределения. Подключайте агентов для анализа логов или выдачи рекомендаций.')
 }
 
 main().catch((err) => {
