@@ -5,6 +5,7 @@ import { StatsPanel, StatsData } from './StatsPanel'
 import { InputForm } from './InputForm'
 import { ProcessFlow } from './ProcessFlow'
 import { ManualDemoPanel } from './ManualDemoPanel'
+import { runPrototypeDemo } from '../demo/prototype'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -166,13 +167,32 @@ export default function App() {
               onParticipantsChange={setDemoParticipants}
               onTotalTokensChange={setDemoTotal}
               onDenomChange={setDenom}
-              onRunDemo={() => {
+              onRunDemo={async () => {
                 setDemoRunning(true)
                 setAutoStats(undefined)
                 contractApi.clearLogs()
+                
+                // Пробуем подключиться к серверу
                 const url = `http://localhost:8787/demo-fast?participants=${demoParticipants}&total=${demoTotal}&denom=${encodeURIComponent(denom)}`
                 const es = new EventSource(url)
+                
+                let serverConnected = false
+                const timeout = setTimeout(() => {
+                  if (!serverConnected) {
+                    es.close()
+                    // Если сервер недоступен, используем офлайн-демо
+                    runPrototypeDemo({
+                      participants: demoParticipants,
+                      totalTokens: demoTotal,
+                      denom,
+                      log: (line) => contractApi.appendLog(line)
+                    }).finally(() => setDemoRunning(false))
+                  }
+                }, 1000)
+                
                 es.onmessage = (e) => {
+                  serverConnected = true
+                  clearTimeout(timeout)
                   try {
                     const { line } = JSON.parse(e.data)
                     contractApi.appendLog(line)
@@ -180,13 +200,28 @@ export default function App() {
                 }
                 es.onerror = () => {
                   es.close()
-                  setDemoRunning(false)
+                  clearTimeout(timeout)
+                  if (!serverConnected) {
+                    // Сервер недоступен, используем офлайн-демо
+                    runPrototypeDemo({
+                      participants: demoParticipants,
+                      totalTokens: demoTotal,
+                      denom,
+                      log: (line) => contractApi.appendLog(line)
+                    }).finally(() => setDemoRunning(false))
+                  } else {
+                    setDemoRunning(false)
+                  }
+                }
+                es.onopen = () => {
+                  serverConnected = true
+                  clearTimeout(timeout)
                 }
               }}
               running={demoRunning}
             />
             <p className="hint" style={{ marginTop: 12 }}>
-              💡 Демо выполняется на локальном сервере, логи также видны в терминале (npm run dev).
+              💡 Демо автоматически использует локальный сервер (если доступен) или работает офлайн в браузере.
             </p>
           </Section>
 
