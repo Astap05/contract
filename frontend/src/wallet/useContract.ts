@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 
-export function useContract({ client, contractAddress }: { client: SigningCosmWasmClient | null; contractAddress: string }) {
+export function useContract({ client, contractAddress, address }: { client: SigningCosmWasmClient | null; contractAddress: string; address?: string }) {
   const [logs, setLogs] = useState<string[]>([])
   const push = (line: string) => setLogs(prev => [...prev.slice(-500), line])
   const appendLog = (line: string) => push(line)
@@ -45,49 +45,50 @@ export function useContract({ client, contractAddress }: { client: SigningCosmWa
   })
 
   const register = () => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
-    const res = await client.signAndBroadcast((await client.getSignerAddresses())[0], [{ typeUrl: '/cosmwasm.wasm.v1.MsgExecuteContract', value: { sender: (await client.getSignerAddresses())[0], contract: contractAddress, msg: new TextEncoder().encode(JSON.stringify({ register_participant: {} })), funds: [] } }], 'auto')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
+    const msg = { register_participant: {} }
+    const res = await client.execute(address, contractAddress, msg, 'auto')
     push(`register_participant → tx ${res.transactionHash}`)
     return res
   })
 
   const submitTask = (description: string | null) => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
     const msg = { submit_task: { description } }
-    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto')
+    const res = await client.execute(address, contractAddress, msg, 'auto')
     push(`submit_task → tx ${res.transactionHash}`)
     return res
   })
 
   const validateTask = (participant: string) => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
     const msg = { validate_task: { participant } }
-    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto')
+    const res = await client.execute(address, contractAddress, msg, 'auto')
     push(`validate_task(${participant}) → tx ${res.transactionHash}`)
     return res
   })
 
   const approveDistribution = (participant: string, amount: string) => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
     const msg = { approve_distribution: { participant, amount } }
-    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto')
+    const res = await client.execute(address, contractAddress, msg, 'auto')
     push(`approve_distribution(${participant}, ${amount}) → tx ${res.transactionHash}`)
     return res
   })
 
   const claimReward = () => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
     const msg = { claim_reward: {} }
-    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto')
+    const res = await client.execute(address, contractAddress, msg, 'auto')
     push(`claim_reward → tx ${res.transactionHash}`)
     return res
   })
 
   const deposit = (denom: string, amount: string) => run(async () => {
-    if (!client || !contractAddress) throw new Error('Нет клиента/адреса контракта')
+    if (!client || !contractAddress || !address) throw new Error('Нет клиента/адреса контракта/кошелька')
     const msg = { deposit: {} }
     const funds = [{ denom, amount }]
-    const res = await client.execute((await client.getSignerAddresses())[0], contractAddress, msg, 'auto', undefined, funds)
+    const res = await client.execute(address, contractAddress, msg, 'auto', undefined, funds)
     push(`deposit ${amount}${denom} → tx ${res.transactionHash}`)
     return res
   })

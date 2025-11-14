@@ -23,7 +23,7 @@ export default function App() {
 
   const wallet = useWallet({ chainId, rpc })
   const { client, address } = wallet
-  const contractApi = useContract({ client, contractAddress: contract })
+  const contractApi = useContract({ client, contractAddress: contract, address })
 
   const connected = !!address
   const [demoParticipants, setDemoParticipants] = useState(10)
@@ -182,7 +182,6 @@ export default function App() {
                   es.close()
                   setDemoRunning(false)
                 }
-                es.onclose = () => setDemoRunning(false)
               }}
               running={demoRunning}
             />

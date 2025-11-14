@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { SigningCosmWasmClient, GasPrice } from '@cosmjs/cosmwasm-stargate'
+import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate'
+import { GasPrice } from '@cosmjs/stargate'
 import { OfflineSigner } from '@cosmjs/proto-signing'
 
 declare global {

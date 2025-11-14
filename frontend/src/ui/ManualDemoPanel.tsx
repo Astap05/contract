@@ -85,7 +85,6 @@ export function ManualDemoPanel({ denom, onDenomChange }: ManualDemoPanelProps) 
       es.close()
       setRunning(false)
     }
-    es.onclose = () => setRunning(false)
   }
 
   const processStats = useMemo(
